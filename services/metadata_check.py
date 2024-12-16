@@ -13,7 +13,7 @@ class EmailData(BaseModel):
 
 def check_sender_domain(domain: str) -> str:
     try:
-        mx_records = dns.resolver.resolve(domain, 'MX')
+        mx_records = dns.resolver.resolve(domain, 'MX') # DNS-ээс MX бичиглэлийг шалгаж байна
         return "Valid domain with MX records" if mx_records else "Invalid domain"
     except Exception as e:
         return f"Domain check error: {e}"
