@@ -2,7 +2,10 @@ import pandas as pd
 from urllib.parse import urlparse
 from typing import List, Dict, Union
 from models.email_model import EmailData
-from sklearn.externals import joblib
+import joblib
+
+model = None
+vectorizer = None
 
 def load_resources():
     global model, vectorizer

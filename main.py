@@ -8,9 +8,11 @@ from typing import List
 import threading
 import time
 
+from routes import analyze_and_predict_router, analyze_router, predict_router
 
-# Имэйл шалгах зориулалттай хуучин кодыг импортолно.
-from routes import analyze_and_predict as email_analysis_router
+
+# # Имэйл шалгах зориулалттай хуучин кодыг импортолно.
+# from routes import analyze_and_predict as email_analysis_router
 from models.email_model import EmailData
 
 app = FastAPI()
@@ -41,7 +43,7 @@ def connect_to_imap():
 
 # Имэйлын агуулгыг задлах функц
 def parse_email(raw_email):
-    """Имэйл агуулгыг задлах функц"""
+    """Extract and parse email content."""
     msg = email.message_from_bytes(raw_email)
     subject, encoding = decode_header(msg["Subject"])[0]
     if isinstance(subject, bytes):
@@ -60,7 +62,16 @@ def parse_email(raw_email):
 
     email_headers = "\n".join([f"{k}: {v}" for k, v in msg.items()])
 
-    return EmailData(sender_email=sender, email_headers=email_headers)
+    # Ensure all required fields are populated
+    return EmailData(
+        sender_email=sender,
+        email_headers=email_headers,
+        email_body=body,
+        subject=subject,
+        attachments=[],
+        urls=[]
+    )
+
 
 # Реал цагийн имэйл мониторинг
 def monitor_inbox():
@@ -95,6 +106,10 @@ def monitor_inbox():
             print(f"Error: {e}. Retrying about 5 seconds later...")
             time.sleep(5)
 
+app.include_router(analyze_and_predict_router, prefix="/analysis-and-predict", tags=["Analysis and Prediction"])
+app.include_router(analyze_router, prefix="/analyze", tags=["Analysis"])
+app.include_router(predict_router, prefix="/predict", tags=["Prediction"])
+
 @app.get("/real-time-emails", response_model=List[EmailData])
 def get_new_emails():
     """API: Шинэ имэйлийг авах"""
@@ -115,4 +130,4 @@ def read_root():
     return {"message": "IMAP Real-Time Email API is running"}
 
 # Имэйл шинжилгээний маршрутыг багтаах
-app.include_router(email_analysis_router, prefix="/analysis", tags=["Email Analysis"])
+# app.include_router(email_analysis_router, prefix="/analysis", tags=["Email Analysis"])

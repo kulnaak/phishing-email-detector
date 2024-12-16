@@ -1,10 +1,10 @@
 from fastapi import APIRouter
 from models.email_model import EmailData
-from services import *
+from services import analyze_attachments, analyze_metadata, analyze_text, analyze_urls
 
 router = APIRouter()
 
-@router.post("/analyze")
+@router.post("/analyze/")
 def analyze_email(email_data: EmailData):
     return {
         "attachment_results": analyze_attachments(email_data),
