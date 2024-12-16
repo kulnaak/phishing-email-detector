@@ -7,6 +7,9 @@ router = APIRouter()
 @router.post("/predict/")
 def predict_email(email_data: EmailData):
     try:
+        if model is None or vectorizer is None:
+            return {"error": "Model or vectorizer not loaded"}
+        
         email_body = email_data.email_body
         transformed_body = vectorizer.transform([email_body])
         prediction = model.predict(transformed_body)[0]

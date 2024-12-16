@@ -9,8 +9,14 @@ vectorizer = None
 
 def load_resources():
     global model, vectorizer
-    model = joblib.load("../models/phishing_detector.pkl")
-    vectorizer = joblib.load("../models/tfidf_vectorizer.pkl")
+    try:
+        model = joblib.load("models/phishing_email_detector.pkl")
+        print(f'Model is::: {model}')
+        vectorizer = joblib.load("models/tfidf_vectorizer.pkl")
+        print(f'Vector is::: {model}')
+        print("Resources loaded successfully!")
+    except Exception as e:
+        print(f"Error loading resources: {e}")
 
 
 def extract_email_features(email: EmailData, phishing_keywords: List[str] = None) -> Dict[str, Union[str, int]]:
