@@ -1,14 +1,10 @@
-from fastapi import FastAPI
+from fastapi import APIRouter
 from routes import *
 from models.email_model import EmailData
 
-app = FastAPI()
+router = APIRouter()
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Unified Phishing Email Detector API"}
-
-@app.post("/analyze-and-predict/")
+@router.post("/analyze-and-predict/")
 def analyze_and_predict(email_data: EmailData):
     try:
         analysis_results = analyze_email(email_data)

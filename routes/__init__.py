@@ -1,2 +1,3 @@
 from analyze import analyze_email
 from predict import predict_email
+from analyze_and_predict import analyze_and_predict
