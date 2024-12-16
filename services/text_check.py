@@ -21,7 +21,7 @@ def detect_urgent_tone(email_text):
         return f"Urgent tone detected: {', '.join(detected_phrases)}"
     return "No urgent tone detected."
 
-def analyze_email_content(email_text):
+def analyze_text(email_text):
     keyword_check = detect_keywords(email_text)
     # grammar_check = check_grammar_errors(email_text)
     urgency_check = detect_urgent_tone(email_text)

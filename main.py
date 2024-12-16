@@ -10,7 +10,7 @@ import time
 
 
 # Имэйл шалгах зориулалттай хуучин кодыг импортолно.
-from routes.email_analysis import router as email_analysis_router
+from routes.analyze import router as email_analysis_router
 from models.email_model import EmailData
 
 app = FastAPI()

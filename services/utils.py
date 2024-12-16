@@ -1,12 +1,14 @@
 import pandas as pd
 from urllib.parse import urlparse
 from typing import List, Dict, Union
-from pydantic import BaseModel
+from models.email_model import EmailData
+from sklearn.externals import joblib
 
-class EmailData(BaseModel):
-    sender_email: str
-    subject: str
-    email_body: str
+def load_resources():
+    global model, vectorizer
+    model = joblib.load("../models/phishing_detector.pkl")
+    vectorizer = joblib.load("../models/tfidf_vectorizer.pkl")
+
 
 def extract_email_features(email: EmailData, phishing_keywords: List[str] = None) -> Dict[str, Union[str, int]]:
     phishing_keywords = phishing_keywords or ['verify', 'urgent', 'click here']

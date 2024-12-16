@@ -49,21 +49,16 @@ def extract_sender_ip(email_headers: str) -> str:
     except Exception as e:
         return f"IP extraction error: {e}"
 
-def analyze_email_sender(email_data: EmailData) -> Dict[str, Union[str, Dict[str, str]]]:
+def analyze_metadata(email_data: EmailData) -> Dict[str, Union[str, Dict[str, str]]]:
     try:
         sender_domain = email_data.sender_email.split("@")[-1]
         
-        domain_result = {
+        return {
             "mx_check": check_sender_domain(sender_domain),
             "spf_check": check_spf(sender_domain),
-            "dkim_check": check_dkim(sender_domain)
+            "dkim_check": check_dkim(sender_domain),
+            "sender_ip_analysis": extract_sender_ip(email_data.email_headers)   
         }
-
-        sender_ip_result = extract_sender_ip(email_data.email_headers)
-
-        return {
-            "sender_domain_analysis": domain_result,
-            "sender_ip_analysis": sender_ip_result
-        }
+    
     except Exception as e:
         return {"error": f"Error analyzing sender details: {e}"}
