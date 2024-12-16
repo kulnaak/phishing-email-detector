@@ -16,4 +16,5 @@ def analyze_email(email_data: EmailData):
         "dkim_check": check_dkim(domain),
         "sender_ip_check": extract_sender_ip(email_headers),
     }
+    
     return results
