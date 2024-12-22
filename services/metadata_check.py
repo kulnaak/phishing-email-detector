@@ -14,29 +14,29 @@ class EmailData(BaseModel):
 def check_sender_domain(domain: str) -> str:
     try:
         mx_records = dns.resolver.resolve(domain, 'MX') # DNS-ээс MX бичиглэлийг шалгаж байна
-        return "Valid domain with MX records" if mx_records else "Invalid domain"
+        return "MX бичиглэлтэй баталгаатай домайн" if mx_records else "Баталгаагүй домайн."
     except Exception as e:
-        return f"Domain check error: {e}"
+        return f"Алдаа гарлаа: {e}"
 
 def check_spf(domain: str) -> str:
     try:
         txt_records = dns.resolver.resolve(domain, 'TXT')
         for record in txt_records:
             if 'v=spf1' in record.to_text():
-                return f"SPF record found: {record.to_text()}"
-        return "No SPF record found"
+                return f"SPF бичиглэл олдсон: {record.to_text()}"
+        return "SPF бичиглэл олдоогүй"
     except Exception as e:
-        return f"SPF check error: {e}"
+        return f"Алдаа гарлаа: {e}"
 
 def check_dkim(domain: str) -> str:
     try:
         dkim_selector = f"default._domainkey.{domain}"
         dkim_record = dns.resolver.resolve(dkim_selector, 'TXT')
-        return f"DKIM record found: {dkim_record[0].to_text()}"
+        return f"DKIM бичиглэл олдсон: {dkim_record[0].to_text()}"
     except dns.resolver.NXDOMAIN:
-        return "No DKIM record found"
+        return "DKIM бичиглэл олдоогүй"
     except Exception as e:
-        return f"DKIM check error: {e}"
+        return f"Алдаа гарлаа. {e}"
 
 def extract_sender_ip(email_headers: str) -> str:
     try:
@@ -44,10 +44,10 @@ def extract_sender_ip(email_headers: str) -> str:
         if match:
             ip = match.group(1)
             ipaddress.ip_address(ip)  # Validate IP
-            return f"Valid sender IP: {ip}"
-        return "No valid sender IP found"
+            return f"Баталгаатай илгээгчийн IP хаяг: {ip}"
+        return "Баталгаагүй IP хаягаас илгээсэн."
     except Exception as e:
-        return f"IP extraction error: {e}"
+        return f"Алдаа гарлаа: {e}"
 
 def analyze_metadata(email_data: EmailData) -> Dict[str, Union[str, Dict[str, str]]]:
     try:
@@ -61,4 +61,4 @@ def analyze_metadata(email_data: EmailData) -> Dict[str, Union[str, Dict[str, st
         }
     
     except Exception as e:
-        return {"error": f"Error analyzing sender details: {e}"}
+        return {"error": f"Алдаа гарлаа: {e}"}

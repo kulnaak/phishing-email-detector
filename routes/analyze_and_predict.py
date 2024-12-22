@@ -18,3 +18,4 @@ def analyze_and_predict(email_data: EmailData):
         }
     except Exception as e:
         return {"error": str(e)}
+    

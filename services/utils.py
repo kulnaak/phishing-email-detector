@@ -13,7 +13,7 @@ def load_resources():
         model = joblib.load("models/phishing_email_detector.pkl")
         print(f'Model is::: {model}')
         vectorizer = joblib.load("models/tfidf_vectorizer.pkl")
-        print(f'Vector is::: {model}')
+        print(f'Vector is::: {vectorizer}')
         print("Resources loaded successfully!")
     except Exception as e:
         print(f"Error loading resources: {e}")

@@ -11,33 +11,33 @@ def analyze_domain(url: str) -> str:
     try:
         parsed_url = urlparse(url)
         domain = parsed_url.netloc
-        suspicious_patterns = ["login", "verify", "secure", "-secure", "update"]
+        suspicious_patterns = ["login", "verify", "secure", "-secure", "update", "нэвтрэх", "шалгах", "баталгаа", "засварлах", "нууц", "password", "pass", "auth"]	
         if any(pattern in domain for pattern in suspicious_patterns):
-            return f"Suspicious domain detected: {domain}"
-        return f"Domain seems safe: {domain}"
+            return f"Сэжигтэй домайн илэрсэн: {domain}"
+        return f"Аюулгүй домайн: {domain}"
     except Exception as e:
-        return f"Error analyzing domain: {e}"
+        return f"Алдаа гарлаа: {e}"
 
 def expand_shortened_url(short_url: str) -> str:
     try:
         response = requests.head(short_url, allow_redirects=True)
         expanded_url = response.url
-        return f"Expanded URL: {expanded_url}"
+        return f"Өргөтгөсөн URL: {expanded_url}"
     except Exception as e:
-        return f"Error expanding URL: {e}"
+        return f"Алдаа гарлаа: {e}"
 
 def check_https(url: str) -> str:
     try:
         parsed_url = urlparse(url)
         if parsed_url.scheme == "https":
-            return "The URL uses HTTPS, which is secure."
-        return "The URL does not use HTTPS, which might be insecure."
+            return "HTTPS протокол ашигласан тул аюулгүй."
+        return "HTTPS протокол ашиглаагүй тул аюултай байж болзошгүй."
     except Exception as e:
-        return f"Error checking HTTPS: {e}"
+        return f"Алдаа гарлаа: {e}"
 
 def analyze_urls(email_data: EmailData) -> Dict[str, Union[str, Dict[str, str]]]:
     if not email_data.urls:
-        return {"url_analysis": "No URLs found in the email."}
+        return {"url_analysis": "Линк агуулаагүй."}
 
     results = {}
     for url in email_data.urls:
@@ -48,7 +48,7 @@ def analyze_urls(email_data: EmailData) -> Dict[str, Union[str, Dict[str, str]]]
         if parsed_url.netloc in shortened_domains:
             expanded_url = expand_shortened_url(url)
         else:
-            expanded_url = "URL is not shortened."
+            expanded_url = "Өргөтгөсөн URL биш."
         results[url] = {
             "domain_analysis": domain_analysis,
             "https_check": https_check,

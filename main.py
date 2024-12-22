@@ -9,10 +9,8 @@ import threading
 import time
 import requests
 
-from services.utils import load_resources, model, vectorizer
-
+from services.utils import load_resources
 from routes import analyze_and_predict_router, analyze_router, predict_router
-
 from models.email_model import EmailData
 
 app = FastAPI()
@@ -62,7 +60,6 @@ def parse_email(raw_email):
 
     email_headers = "\n".join([f"{k}: {v}" for k, v in msg.items()])
     
-    # Ensure all required fields are populated
     return EmailData(
         sender_email=sender,
         email_headers=email_headers,
@@ -111,16 +108,17 @@ def send_to_analyze_and_predict(email_data: EmailData):
     """
     Шинэ имэйлийг analyze-and-predict endpoint рүү илгээх функц.
     """
-    url = "http://127.0.0.1:8000/analysis-and-predict/analyze-and-predict/"
+    url = "http://127.0.0.1:8000/analyze-and-predict/"
+
     try:
         # Имэйлийн мэдээллийг JSON болгон илгээх
         response = requests.post(url, json=email_data.dict())
         # Амжилттай илгээгдсэн хариуг хэвлэх
         if response.status_code == 200:
-            print("Analysis and Prediction Response:", response.json())
+            print("Анализ, таамаглалын үр дүн:", response.json())
             prediction = response.json().get("prediction_results", {}).get("prediction")
             if prediction == "Phishing":
-                print("Phishing email detected and moved to spam folder.")
+                print("Фишинг имейл байж болзошгүй тул Spam фолдерт шилжүүлсэн.")
                 move_to_spam_folder(email_data)
         else:
             print(f"Failed to call analyze-and-predict. Status: {response.status_code}, Response: {response.text}")
@@ -136,9 +134,9 @@ def move_to_spam_folder(email_data: EmailData):
             imap.expunge()
     imap.logout()
 
-app.include_router(analyze_and_predict_router, prefix="/analysis-and-predict", tags=["Analysis and Prediction"])
-app.include_router(analyze_router, prefix="/analyze", tags=["Analysis"])
-app.include_router(predict_router, prefix="/predict", tags=["Prediction"])
+app.include_router(analyze_and_predict_router, tags=["Анализ ба Таамаглал"])
+app.include_router(analyze_router, tags=["Анализ"])
+app.include_router(predict_router, tags=["Таамаглал"])
 
 @app.get("/real-time-emails", response_model=List[EmailData])
 def get_new_emails():
@@ -158,4 +156,4 @@ def start_monitoring():
 @app.get("/")
 def read_root():
     """Root endpoint."""
-    return {"message": "IMAP Real-Time Email API is running"}
+    return {"message": "IMAP Real-Time Email API ажиллаж байна. :)"}

@@ -15,10 +15,10 @@ def check_file_type(file_name: str) -> str:
     try:
         _, extension = os.path.splitext(file_name)
         if extension.lower() in DANGEROUS_EXTENSIONS:
-            return f"Suspicious file type detected: {extension}"
-        return f"File type {extension} seems safe."
+            return f"Сэжигтэй файл илэрсэн: {extension}"
+        return f"Аюулгүй файл: {extension}"
     except Exception as e:
-        return f"Error checking file type: {e}"
+        return f"Алдаа гарлаа. {e}"
 
 def scan_file_content(file_name: str) -> str:
     try:
@@ -31,14 +31,14 @@ def scan_file_content(file_name: str) -> str:
         ]
         for pattern in suspicious_patterns:
             if re.search(pattern, file_name, re.IGNORECASE):
-                return f"Suspicious content detected matching pattern: {pattern}"
-        return "No suspicious content found."
+                return f"Дараах сэжигтэй агуулга илэрсэн: {pattern}"
+        return "Сэжигтэй агуулга илрээгүй."
     except Exception as e:
-        return f"Error scanning file content: {e}"
+        return f"Алдаа гарлаа. {e}"
 
 def analyze_attachments(email_data: EmailData) -> Dict[str, Union[str, Dict[str, str]]]:
     if not email_data.attachments:
-        return {"attachment_analysis": "No attachments found."}
+        return {"attachment_analysis": "Хавсралт байхгүй."}
 
     analysis_results = {}
     for attachment in email_data.attachments:
@@ -51,13 +51,3 @@ def analyze_attachments(email_data: EmailData) -> Dict[str, Union[str, Dict[str,
     
     return {"attachment_analysis": analysis_results}
 
-
-# email_data = EmailData(
-#     sender_email="example@example.com",
-#     email_headers="Received: from example.com ([192.168.1.1])",
-#     email_body="This email contains attachments.",
-#     attachments=["malware.js", "safe.pdf", "suspicious.exe"]
-# )
-
-# results = analyze_attachments(email_data)
-# print(results)
