@@ -8,16 +8,15 @@ from typing import List
 import threading
 import time
 import requests
-
 from services.utils import load_resources, model, vectorizer
-
 from routes import analyze_and_predict_router, analyze_router, predict_router
-
 from models.email_model import EmailData
-
 from routes.analyze_and_predict import analyze_and_predict
-
 from routes.analyze import analyze_email
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from email.generator import BytesGenerator
+import io
 
 app = FastAPI()
 
@@ -44,6 +43,124 @@ def connect_to_imap():
         print(f"Error for connecting IMAP server: {e}")
         time.sleep(5)
         return connect_to_imap()
+        
+# Имэйлын их биеийг өөрчлөх функц
+def modify_email_body(raw_email, analysis_results):
+    """Modify the email body to append the analysis results."""
+    original_email = email.message_from_bytes(raw_email)
+
+    # Create a new email object
+    modified_email = MIMEMultipart()
+    for header in ["From", "To", "Subject", "Message-ID"]:
+        if original_email[header]:
+            modified_email[header] = original_email[header]
+
+    # Add plain text body
+    body = ""
+    if original_email.is_multipart():
+        for part in original_email.get_payload():
+            if part.get_content_type() == "text/html":
+                html_body = part.get_payload(decode=True).decode()
+                modified_html_body = html_body + f"<br><br><strong>--- Analysis Results ---</strong><br>{analysis_results}"
+                modified_email.attach(MIMEText(modified_html_body, "html"))
+            else:
+                modified_email.attach(part)
+    else:
+        body = original_email.get_payload(decode=True).decode()
+        modified_body = body + f"\n\n--- Analysis Results ---\n{analysis_results}"
+        modified_email.attach(MIMEText(modified_body, "plain"))
+
+    # Convert the email to bytes
+    buffer = io.BytesIO()
+    BytesGenerator(buffer).flatten(modified_email)
+    return buffer.getvalue()
+    
+# Имэйл дахин оруулах функц
+def reupload_modified_email(imap, folder, modified_email):
+    """Upload the modified email to a specified folder."""
+    response = imap.append(folder, None, None, modified_email)
+    if response[0] == "OK":
+        print(f"Modified email successfully uploaded to {folder}")
+    else:
+        print(f"Failed to upload modified email to {folder}. Response: {response}")
+    
+# Имэйл боловсруулах функц
+def process_email_with_analysis(email_data: EmailData, analysis_results):
+    """Fetch, modify, and reupload the email with appended analysis."""
+    imap = connect_to_imap()
+    try:
+        imap.select("INBOX")
+        result, data = imap.search(None, f'(HEADER Message-ID "{email_data.message_id}")')
+
+        if result == "OK":
+            uids = data[0].split()
+            if not uids:
+                print(f"No email found with Message-ID: {email_data.message_id}")
+                return
+
+            # Fetch the original email
+            raw_email = fetch_email(imap, uids[0])
+            if not raw_email:
+                print(f"Failed to fetch email with UID {uids[0]}")
+                return
+
+            # Modify the email body to include the analysis results
+            modified_email = modify_email_body(raw_email, analysis_results)
+
+            # Upload the modified email to the Phishing folder
+            reupload_modified_email(imap, "Phishing", modified_email)
+
+            # Mark the original email as deleted
+            imap.store(uids[0], "+FLAGS", "\\Deleted")
+            imap.expunge()
+            print(f"Appended analysis to email and reuploaded to the 'Phishing' folder.")
+
+    except Exception as e:
+        print(f"Error processing email with analysis: {e}")
+    finally:
+        imap.logout()
+        
+# Имэйл татаж авах функц
+def fetch_email(imap, uid):
+    """Fetch the raw email data by UID."""
+    _, msg_data = imap.fetch(uid, "(RFC822)")
+    for response_part in msg_data:
+        if isinstance(response_part, tuple):
+            return response_part[1]  # Raw email content
+    return None
+    
+# Анализ хийх болон өөрчлөх
+def send_to_analyze_and_predict(email_data: EmailData):
+    try:
+        print(f"Sending email for analysis: {email_data.sender_email}, Subject: {email_data.subject}")
+        response_data = analyze_and_predict(email_data)
+
+        print("Analysis and Prediction Response:", response_data)
+
+        # Extract the prediction and analysis results
+        prediction = response_data.get("prediction_results", {}).get("prediction")
+        analysis_results = response_data.get("analysis_results", {})
+        
+        if isinstance(analysis_results, dict):
+            analysis_results["prediction"] = prediction
+        else:
+            analysis_results = {"prediction": prediction}
+
+        # Format the analysis results as a string
+        analysis_results_str = "\n".join([f"{key}: {value}" for key, value in analysis_results.items()])
+
+
+        # Check prediction result
+        if prediction == "Фишинг":
+            # analysis_results_str = "\n".join([f"{key}: {value}" for key, value in analysis_results.items()])
+            print("Фишинг имэйл илэрлээ. Spam фолдер руу шилжүүлж байна.")
+            process_email_with_analysis(email_data, analysis_results_str)
+        elif prediction == "Аюулгүй":
+            print("Имэйл аюулгүй байна. Inbox дотор үлдээж байна.")
+        else:
+            print(f"Unexpected prediction result: {prediction}. Email will not be moved.")
+    except Exception as e:
+        print(f"Error calling analyze-and-predict: {e}")
 
 # Имэйлын агуулгыг задлах функц
 def parse_email(raw_email):
@@ -118,29 +235,29 @@ def monitor_inbox():
             time.sleep(5)
             
 
-def send_to_analyze_and_predict(email_data: EmailData):
-    try:
-        # Call the analyze_and_predict function directly
-        print(f"Sending email for analysis: {email_data.sender_email}, Subject: {email_data.subject}")
-        response_data = analyze_and_predict(email_data)
+# def send_to_analyze_and_predict(email_data: EmailData):
+#     try:
+#         # Call the analyze_and_predict function directly
+#         print(f"Sending email for analysis: {email_data.sender_email}, Subject: {email_data.subject}")
+#         response_data = analyze_and_predict(email_data)
 
-        print("Analysis and Prediction Response:", response_data)
+#         print("Analysis and Prediction Response:", response_data)
 
-        # Extract the prediction
-        prediction = response_data.get("prediction_results", {}).get("prediction")
+#         # Extract the prediction
+#         prediction = response_data.get("prediction_results", {}).get("prediction")
 
-        # Check prediction result
-        if prediction == "Фишинг":
-            print(f'email_data.email_body: {email_data.email_body}')
-            print("Фишинг имэйл илэрлээ. Spam фолдер руу шилжүүлж байна.")
-            move_to_spam_folder(email_data)
-        elif prediction == "Аюулгүй":
-            print(f'email_data.email_body: {email_data.email_body}')
-            print("Имэйл аюулгүй байна. Inbox дотор үлдээж байна.")
-        else:
-            print(f"Unexpected prediction result: {prediction}. Email will not be moved.")
-    except Exception as e:
-        print(f"Error calling analyze-and-predict: {e}")
+#         # Check prediction result
+#         if prediction == "Фишинг":
+#             print(f'email_data.email_body: {email_data.email_body}')
+#             print("Фишинг имэйл илэрлээ. Spam фолдер руу шилжүүлж байна.")
+#             move_to_spam_folder(email_data)
+#         elif prediction == "Аюулгүй":
+#             print(f'email_data.email_body: {email_data.email_body}')
+#             print("Имэйл аюулгүй байна. Inbox дотор үлдээж байна.")
+#         else:
+#             print(f"Unexpected prediction result: {prediction}. Email will not be moved.")
+#     except Exception as e:
+#         print(f"Error calling analyze-and-predict: {e}")
 
 def move_to_spam_folder(email_data: EmailData):
     if not email_data.message_id:
