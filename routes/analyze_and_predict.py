@@ -9,9 +9,9 @@ router = APIRouter()
 def analyze_and_predict(email_data: EmailData):
     try:
         analysis_results = analyze_email(email_data)
-        print(f'Model is::: {analysis_results}')
+        print(f'Model analyze::: {analysis_results}')
         prediction_results = predict_email(email_data)
-        print(f'Model is::: {prediction_results}')
+        print(f'Model predict::: {prediction_results}')
         return {
             "analysis_results": analysis_results,
             "prediction_results": prediction_results,

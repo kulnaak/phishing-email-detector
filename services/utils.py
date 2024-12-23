@@ -3,6 +3,8 @@ from urllib.parse import urlparse
 from typing import List, Dict, Union
 from models.email_model import EmailData
 import joblib
+from langdetect import detect
+from translate import Translator
 
 model = None
 vectorizer = None
@@ -17,6 +19,30 @@ def load_resources():
         print("Resources loaded successfully!")
     except Exception as e:
         print(f"Error loading resources: {e}")
+        
+def detect_language_override(email_body: str) -> str:
+    try:
+        mongolian_specific_chars = ["ү", "ө", "х", "ч"]
+        if any(char in email_body for char in mongolian_specific_chars):
+            return "mn"
+
+        detected_language = detect(email_body)
+
+        return detected_language if detected_language in ["mn", "ru", "en"] else "en"
+    except Exception as e:
+        print(f"Error detecting language: {e}")
+        return "en"
+        
+def translate_text(text: str, detected_language: str, target_language: str = "en") -> str:
+    try:
+        if detected_language == target_language:
+            return text
+
+        translator = Translator(from_lang=detected_language, to_lang=target_language)
+        return translator.translate(text)
+    except Exception as e:
+        print(f"Error translating text: {e}")
+        return text
 
 
 def extract_email_features(email: EmailData, phishing_keywords: List[str] = None) -> Dict[str, Union[str, int]]:

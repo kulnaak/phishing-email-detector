@@ -13,6 +13,7 @@ class EmailData(BaseModel):
 
 def check_sender_domain(domain: str) -> str:
     try:
+        domain = domain.strip("><")
         mx_records = dns.resolver.resolve(domain, 'MX') # DNS-ээс MX бичиглэлийг шалгаж байна
         return "MX бичиглэлтэй баталгаатай домайн" if mx_records else "Баталгаагүй домайн."
     except Exception as e:
@@ -20,11 +21,16 @@ def check_sender_domain(domain: str) -> str:
 
 def check_spf(domain: str) -> str:
     try:
+        domain = domain.strip("><")  # Remove extraneous characters
         txt_records = dns.resolver.resolve(domain, 'TXT')
         for record in txt_records:
             if 'v=spf1' in record.to_text():
                 return f"SPF бичиглэл олдсон: {record.to_text()}"
         return "SPF бичиглэл олдоогүй"
+    except dns.resolver.NXDOMAIN:
+        return f"Алдаа гарлаа: Домайн олдсонгүй: {domain}"
+    except dns.resolver.Timeout:
+        return f"Алдаа гарлаа: DNS хариу өгөхгүй байна: {domain}"
     except Exception as e:
         return f"Алдаа гарлаа: {e}"
 

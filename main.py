@@ -9,8 +9,10 @@ import threading
 import time
 import requests
 
-from services.utils import load_resources
+from services.utils import load_resources, model, vectorizer
+
 from routes import analyze_and_predict_router, analyze_router, predict_router
+
 from models.email_model import EmailData
 
 app = FastAPI()
@@ -41,7 +43,6 @@ def connect_to_imap():
 
 # Имэйлын агуулгыг задлах функц
 def parse_email(raw_email):
-    """Extract and parse email content."""
     msg = email.message_from_bytes(raw_email)
     subject, encoding = decode_header(msg["Subject"])[0]
     if isinstance(subject, bytes):
@@ -105,25 +106,33 @@ def monitor_inbox():
             time.sleep(5)
             
 def send_to_analyze_and_predict(email_data: EmailData):
-    """
-    Шинэ имэйлийг analyze-and-predict endpoint рүү илгээх функц.
-    """
-    url = "http://127.0.0.1:8000/analyze-and-predict/"
-
+    url = "http://127.0.0.1:8000/analysis-and-predict/analyze-and-predict/"
+    
     try:
-        # Имэйлийн мэдээллийг JSON болгон илгээх
+        # Send email data to the analysis endpoint
+        print(f"Sending email for analysis: {email_data.sender_email}, Subject: {email_data.subject}")
         response = requests.post(url, json=email_data.dict())
-        # Амжилттай илгээгдсэн хариуг хэвлэх
+        
         if response.status_code == 200:
-            print("Анализ, таамаглалын үр дүн:", response.json())
-            prediction = response.json().get("prediction_results", {}).get("prediction")
-            if prediction == "Phishing":
-                print("Фишинг имейл байж болзошгүй тул Spam фолдерт шилжүүлсэн.")
+            response_data = response.json()
+            print("Analysis and Prediction Response:", response_data)
+
+            # Extract the prediction
+            prediction = response_data.get("prediction_results", {}).get("prediction")
+            
+            # Check prediction result
+            if prediction == "Фишинг":
+                print("Фишинг имэйл илэрлээ. Spam фолдер руу шилжүүлж байна.")
                 move_to_spam_folder(email_data)
+            elif prediction == "Аюулгүй":
+                print("Имэйл аюулгүй байна. Inbox дотор үлдээж байна.")
+            else:
+                print(f"Unexpected prediction result: {prediction}. Email will not be moved.")
         else:
             print(f"Failed to call analyze-and-predict. Status: {response.status_code}, Response: {response.text}")
     except Exception as e:
         print(f"Error calling analyze-and-predict: {e}")
+
 
 def move_to_spam_folder(email_data: EmailData):
     imap = connect_to_imap()
@@ -134,9 +143,9 @@ def move_to_spam_folder(email_data: EmailData):
             imap.expunge()
     imap.logout()
 
-app.include_router(analyze_and_predict_router, tags=["Анализ ба Таамаглал"])
-app.include_router(analyze_router, tags=["Анализ"])
-app.include_router(predict_router, tags=["Таамаглал"])
+app.include_router(analyze_and_predict_router, prefix="/analysis-and-predict", tags=["Analysis and Prediction"])
+app.include_router(analyze_router, prefix="/analyze", tags=["Analysis"])
+app.include_router(predict_router, prefix="/predict", tags=["Prediction"])
 
 @app.get("/real-time-emails", response_model=List[EmailData])
 def get_new_emails():
@@ -156,4 +165,4 @@ def start_monitoring():
 @app.get("/")
 def read_root():
     """Root endpoint."""
-    return {"message": "IMAP Real-Time Email API ажиллаж байна. :)"}
+    return {"message": "IMAP Real-Time Email API is running"}

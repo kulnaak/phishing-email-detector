@@ -15,4 +15,6 @@ class EmailData(BaseModel):
     timestamp: Optional[str] = Field(None, description="Имейл илгээсэн цаг")
     ip_addresses: Optional[List[str]] = Field(None, description="Имейлийн толгой хэсэгт орсон IP хаягууд")
     reply_to: Optional[str] = Field(None, description="Хариу илгээх хаяг")
+    
+    message_id: Optional[str] = Field(None, description="Имейлийн Message-ID")
 
