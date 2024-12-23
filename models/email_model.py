@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Dict, Optional, List, Union
 
 class EmailData(BaseModel):
     sender_email: str = Field(..., description="Илгээгчийн имейл хаяг")
@@ -15,6 +15,10 @@ class EmailData(BaseModel):
     timestamp: Optional[str] = Field(None, description="Имейл илгээсэн цаг")
     ip_addresses: Optional[List[str]] = Field(None, description="Имейлийн толгой хэсэгт орсон IP хаягууд")
     reply_to: Optional[str] = Field(None, description="Хариу илгээх хаяг")
-    
     message_id: Optional[str] = Field(None, description="Имейлийн Message-ID")
+    
+    analysis_results: Optional[Dict[str, Union[str, Dict[str, str]]]] = None
+
+    class Config:
+        allow_mutation = True
 

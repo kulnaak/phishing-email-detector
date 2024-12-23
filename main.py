@@ -15,6 +15,10 @@ from routes import analyze_and_predict_router, analyze_router, predict_router
 
 from models.email_model import EmailData
 
+from routes.analyze_and_predict import analyze_and_predict
+
+from routes.analyze import analyze_email
+
 app = FastAPI()
 
 # IMAP серверийн тохиргоо
@@ -48,6 +52,8 @@ def parse_email(raw_email):
     if isinstance(subject, bytes):
         subject = subject.decode(encoding if encoding else "utf-8")
     sender = msg.get("From")
+    message_id = msg.get("Message-ID")
+    print(f"Message-ID:::::::::::::::::::::::::::::::::::::::::::::: {message_id}")
 
     body = ""
     if msg.is_multipart():
@@ -61,14 +67,17 @@ def parse_email(raw_email):
 
     email_headers = "\n".join([f"{k}: {v}" for k, v in msg.items()])
     
-    return EmailData(
+    email_data = EmailData(
         sender_email=sender,
         email_headers=email_headers,
         email_body=body,
         subject=subject,
         attachments=[],
-        urls=[]
+        urls=[],
+        message_id=message_id,
     )
+    
+    return email_data
 
 # Реал цагийн имэйл мониторинг
 def monitor_inbox():
@@ -93,6 +102,9 @@ def monitor_inbox():
                                 processed_uids.add(uid)
                                 print(f"Found a new mail: {email_data}")
                                 
+                                if email_data.analysis_results:
+                                    print(f"Analysis Results: {email_data.analysis_results}")
+                                
                                 send_to_analyze_and_predict(email_data)
 
             imap.noop()
@@ -105,44 +117,68 @@ def monitor_inbox():
             print(f"Error: {e}. Retrying about 5 seconds later...")
             time.sleep(5)
             
-def send_to_analyze_and_predict(email_data: EmailData):
-    url = "http://127.0.0.1:8000/analysis-and-predict/analyze-and-predict/"
-    
-    try:
-        # Send email data to the analysis endpoint
-        print(f"Sending email for analysis: {email_data.sender_email}, Subject: {email_data.subject}")
-        response = requests.post(url, json=email_data.dict())
-        
-        if response.status_code == 200:
-            response_data = response.json()
-            print("Analysis and Prediction Response:", response_data)
 
-            # Extract the prediction
-            prediction = response_data.get("prediction_results", {}).get("prediction")
-            
-            # Check prediction result
-            if prediction == "Фишинг":
-                print("Фишинг имэйл илэрлээ. Spam фолдер руу шилжүүлж байна.")
-                move_to_spam_folder(email_data)
-            elif prediction == "Аюулгүй":
-                print("Имэйл аюулгүй байна. Inbox дотор үлдээж байна.")
-            else:
-                print(f"Unexpected prediction result: {prediction}. Email will not be moved.")
+def send_to_analyze_and_predict(email_data: EmailData):
+    try:
+        # Call the analyze_and_predict function directly
+        print(f"Sending email for analysis: {email_data.sender_email}, Subject: {email_data.subject}")
+        response_data = analyze_and_predict(email_data)
+
+        print("Analysis and Prediction Response:", response_data)
+
+        # Extract the prediction
+        prediction = response_data.get("prediction_results", {}).get("prediction")
+
+        # Check prediction result
+        if prediction == "Фишинг":
+            print(f'email_data.email_body: {email_data.email_body}')
+            print("Фишинг имэйл илэрлээ. Spam фолдер руу шилжүүлж байна.")
+            move_to_spam_folder(email_data)
+        elif prediction == "Аюулгүй":
+            print(f'email_data.email_body: {email_data.email_body}')
+            print("Имэйл аюулгүй байна. Inbox дотор үлдээж байна.")
         else:
-            print(f"Failed to call analyze-and-predict. Status: {response.status_code}, Response: {response.text}")
+            print(f"Unexpected prediction result: {prediction}. Email will not be moved.")
     except Exception as e:
         print(f"Error calling analyze-and-predict: {e}")
 
-
 def move_to_spam_folder(email_data: EmailData):
-    imap = connect_to_imap()
-    result, data = imap.search(None, f'(HEADER Message-ID "{email_data.email_headers}")')
-    if result == "OK":
-        for num in data[0].split():
-            imap.store(num, '+X-GM-LABELS', '\\Spam')
-            imap.expunge()
-    imap.logout()
+    if not email_data.message_id:
+        print("Message-ID is missing. Cannot move email to Spam.")
+        return
 
+    imap = connect_to_imap()
+    try:
+        result, data = imap.search(None, f'(HEADER Message-ID "{email_data.message_id}")')
+        
+        if result == "OK":
+            email_ids = data[0].split()
+            if not email_ids:
+                print(f"No email found with Message-ID: {email_data.message_id}")
+                return
+            
+            for num in email_ids:
+                if "MOVE" in imap.capabilities:
+                    result_move = imap.uid("MOVE", num, "Phishing")
+                    
+                    if result_move[0] == "OK":
+                        print(f"Successfully moved email with Message-ID {email_data.message_id} to Spam.")
+                    else:
+                        print(f"Failed to move email with Message-ID {email_data.message_id}.")
+                else:
+                    imap.store(num, '+X-GM-LABELS', 'Phishing')
+                    imap.store(num, '+FLAGS', r'\Deleted')
+                    print(f"Marked email with Message-ID {email_data.message_id} as Phishing.")
+            
+            imap.expunge()
+        else:
+            print(f"Failed to search for Message-ID {email_data.message_id}. Status: {result}")
+    except Exception as e:
+        print(f"Error moving email to Phishing: {e}")
+    finally:
+        imap.logout()
+        
+        
 app.include_router(analyze_and_predict_router, prefix="/analysis-and-predict", tags=["Analysis and Prediction"])
 app.include_router(analyze_router, prefix="/analyze", tags=["Analysis"])
 app.include_router(predict_router, prefix="/predict", tags=["Prediction"])
