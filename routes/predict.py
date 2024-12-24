@@ -25,7 +25,8 @@ def predict_email(email_data: EmailData):
         prediction = model.predict(transformed_body)[0]
         result = "Фишинг" if prediction == 1 else "Аюулгүй"
         return {
-            "prediction": result
+            "prediction": result,
+            "detected": detected_language
         }
     except Exception as e:
         return {"error": str(e)}
