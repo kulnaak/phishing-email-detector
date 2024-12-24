@@ -48,7 +48,7 @@ def analyze_urls(email_data: EmailData) -> Dict[str, Union[str, Dict[str, str]]]
         if parsed_url.netloc in shortened_domains:
             expanded_url = expand_shortened_url(url)
         else:
-            expanded_url = "Өргөтгөсөн URL биш."
+            expanded_url = "Өргөтгөсөн URL."
         results[url] = {
             "domain_analysis": domain_analysis,
             "https_check": https_check,

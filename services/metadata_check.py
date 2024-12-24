@@ -14,14 +14,14 @@ class EmailData(BaseModel):
 def check_sender_domain(domain: str) -> str:
     try:
         domain = domain.strip("><")
-        mx_records = dns.resolver.resolve(domain, 'MX') # DNS-ээс MX бичиглэлийг шалгаж байна
+        mx_records = dns.resolver.resolve(domain, 'MX') 
         return "MX бичиглэлтэй баталгаатай домайн" if mx_records else "Баталгаагүй домайн."
     except Exception as e:
         return f"Алдаа гарлаа: {e}"
 
 def check_spf(domain: str) -> str:
     try:
-        domain = domain.strip("><")  # Remove extraneous characters
+        domain = domain.strip("><")  
         txt_records = dns.resolver.resolve(domain, 'TXT')
         for record in txt_records:
             if 'v=spf1' in record.to_text():
@@ -49,7 +49,7 @@ def extract_sender_ip(email_headers: str) -> str:
         match = re.search(r"Received: from .* \[(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\]", email_headers)
         if match:
             ip = match.group(1)
-            ipaddress.ip_address(ip)  # Validate IP
+            ipaddress.ip_address(ip)  
             return f"Баталгаатай илгээгчийн IP хаяг: {ip}"
         return "Баталгаагүй IP хаягаас илгээсэн."
     except Exception as e:
