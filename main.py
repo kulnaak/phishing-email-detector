@@ -46,10 +46,8 @@ def connect_to_imap():
         
 # Имэйлын их биеийг өөрчлөх функц
 def modify_email_body(raw_email, analysis_results):
-    """Modify the email body to append the analysis results."""
     original_email = email.message_from_bytes(raw_email)
 
-    # Create a new email object
     modified_email = MIMEMultipart()
     for header in ["From", "To", "Subject", "Message-ID"]:
         if original_email[header]:
@@ -77,16 +75,14 @@ def modify_email_body(raw_email, analysis_results):
     
 # Имэйл дахин оруулах функц
 def reupload_modified_email(imap, folder, modified_email):
-    """Upload the modified email to a specified folder."""
     response = imap.append(folder, None, None, modified_email)
     if response[0] == "OK":
-        print(f"Modified email successfully uploaded to {folder}")
+        print(f"uploaded to {folder}")
     else:
-        print(f"Failed to upload modified email to {folder}. Response: {response}")
+        print(f"Failed to upload email to {folder}. Response: {response}")
     
 # Имэйл боловсруулах функц
 def process_email_with_analysis(email_data: EmailData, analysis_results):
-    """Fetch, modify, and reupload the email with appended analysis."""
     imap = connect_to_imap()
     try:
         imap.select("INBOX")
@@ -98,19 +94,15 @@ def process_email_with_analysis(email_data: EmailData, analysis_results):
                 print(f"No email found with Message-ID: {email_data.message_id}")
                 return
 
-            # Fetch the original email
             raw_email = fetch_email(imap, uids[0])
             if not raw_email:
                 print(f"Failed to fetch email with UID {uids[0]}")
                 return
 
-            # Modify the email body to include the analysis results
             modified_email = modify_email_body(raw_email, analysis_results)
 
-            # Upload the modified email to the Phishing folder
             reupload_modified_email(imap, "Phishing", modified_email)
 
-            # Mark the original email as deleted
             imap.store(uids[0], "+FLAGS", "\\Deleted")
             imap.expunge()
             print(f"Appended analysis to email and reuploaded to the 'Phishing' folder.")
@@ -122,11 +114,10 @@ def process_email_with_analysis(email_data: EmailData, analysis_results):
         
 # Имэйл татаж авах функц
 def fetch_email(imap, uid):
-    """Fetch the raw email data by UID."""
     _, msg_data = imap.fetch(uid, "(RFC822)")
     for response_part in msg_data:
         if isinstance(response_part, tuple):
-            return response_part[1]  # Raw email content
+            return response_part[1] 
     return None
     
 # Анализ хийх болон өөрчлөх
@@ -137,7 +128,6 @@ def send_to_analyze_and_predict(email_data: EmailData):
 
         print("Analysis and Prediction Response:", response_data)
 
-        # Extract the prediction and analysis results
         prediction = response_data.get("prediction_results", {}).get("prediction")
         analysis_results = response_data.get("analysis_results", {})
         
@@ -146,13 +136,10 @@ def send_to_analyze_and_predict(email_data: EmailData):
         else:
             analysis_results = {"prediction": prediction}
 
-        # Format the analysis results as a string
         analysis_results_str = "\n".join([f"{key}: {value}" for key, value in analysis_results.items()])
 
 
-        # Check prediction result
         if prediction == "Фишинг":
-            # analysis_results_str = "\n".join([f"{key}: {value}" for key, value in analysis_results.items()])
             print("Фишинг имэйл илэрлээ. Spam фолдер руу шилжүүлж байна.")
             process_email_with_analysis(email_data, analysis_results_str)
         elif prediction == "Аюулгүй":
